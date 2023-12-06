@@ -1,6 +1,7 @@
 import sys
 from time import sleep
 import pygame
+from pygame import mixer
 from game_parameters import Game_parameters
 from score import Score
 from goat import Goat
@@ -11,7 +12,7 @@ from scoreboard import Scoreboard
 
 
 class NavyTakeover:
-    def __init__(self):
+    def __init__(self): #set up screen/ game parameters
         pygame.init()
         self.game_parameters = Game_parameters()
         self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
@@ -27,8 +28,12 @@ class NavyTakeover:
         self.mules = pygame.sprite.Group()
         self._create_fleet()
         self.play_button = Play_Button(self, "Play")
+        mixer.init()
+        mixer.music.load('music.ogg')
+        mixer.music.play()
+#While Loop to update
 
-    def run_game(self):
+    def run_game(self): #while loop to run the game
         while True:
             self._check_events()
             if self.stats.game_active:
@@ -37,7 +42,7 @@ class NavyTakeover:
                 self._update_mules()
             self._update_screen()
 
-    def _check_events(self):
+    def _check_events(self): #code for all key events/mouse events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
@@ -48,7 +53,7 @@ class NavyTakeover:
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
                 self._check_play_button(mouse_pos)
-    def _check_play_button(self,mouse_pos):
+    def _check_play_button(self,mouse_pos): #initializing touching the play button
         button_clicked = self.play_button.rect.collidepoint(mouse_pos)
         if button_clicked and not self.stats.game_active:
             self.game_parameters.initialize_dynamic_settings()
@@ -62,7 +67,7 @@ class NavyTakeover:
             self.goat.center_goat()
             pygame.mouse.set_visible(False)
 
-    def _check_keydown_events(self, event):
+    def _check_keydown_events(self, event): #code for the arrow keys to throw ball/move goat left to right
         if event.key == pygame.K_RIGHT:
             self.goat.moving_right = True
         elif event.key == pygame.K_LEFT:
@@ -72,13 +77,13 @@ class NavyTakeover:
         elif event.key == pygame.K_SPACE:
             self._throw_football()
 
-    def _check_keyup_events(self, event):
+    def _check_keyup_events(self, event): #stops the goat from moving when the arrows arent pressed
         if event.key == pygame.K_RIGHT:
             self.goat.moving_right = False
         elif event.key == pygame.K_LEFT:
             self.goat.moving_left = False
 
-    def _create_fleet(self):
+    def _create_fleet(self):  #creates the fleet at the top of the screen
         mule = Mule(self)
         mule_width, mule_height = mule.rect.size
         available_space_x = self.game_parameters.screen_width - (2 * mule_width)
@@ -90,7 +95,7 @@ class NavyTakeover:
             for mule_number in range(number_mules_x):
                 self._create_mule(mule_number, row_number)
 
-    def _create_mule(self, mule_number, row_number):
+    def _create_mule(self, mule_number, row_number): #creates the mules that go into the fleet
         mule = Mule(self)
         mule_width, alien_height = mule.rect.size
         mule.x = mule_width + 2 * mule_width * mule_number
@@ -98,7 +103,7 @@ class NavyTakeover:
         mule.rect.y = mule.rect.height + 2 * mule.rect.height * row_number
         self.mules.add(mule)
 
-    def _check_fleet_edges(self):
+    def _check_fleet_edges(self): #tells pygame to switch directions when the fleet hits the end of the screen
         for mule in self.mules.sprites():
             if mule.check_edges() and mule.rect.right >= self.screen.get_rect().right:
                 self._change_fleet_direction()
@@ -108,7 +113,7 @@ class NavyTakeover:
                 # self._change_fleet_direction()
                 # break
 
-    def _change_fleet_direction(self):
+    def _change_fleet_direction(self): #code to actually switch directions
         for mule in self.mules.sprites():
             mule.rect.y += self.game_parameters.fleet_drop_speed
             # if self.game_parameters.fleet_direction == 1:
@@ -118,14 +123,14 @@ class NavyTakeover:
 
             self.game_parameters.fleet_direction = -1
 
-    def _check_mules_bottom(self):
+    def _check_mules_bottom(self): #ends the round when the mules get to the bottom
         screen_rect = self.screen.get_rect()
         for mule in self.mules.sprites():
             if mule.rect.bottom -20 >= screen_rect.bottom:
                 self._goat_hit()
                 break
 
-    def _throw_football(self):
+    def _throw_football(self): #code to the mule to throw football
         if len(self.footballs) < self.game_parameters.footballs_allowed:
             new_football = Football(self)
             self.footballs.add(new_football)
@@ -137,13 +142,15 @@ class NavyTakeover:
                 self.footballs.remove(football)
         self._check_football_mule_collisions()
 
-    def _check_football_mule_collisions(self):
+    def _check_football_mule_collisions(self): #checks for a collision between mule and goat
         collisions = pygame.sprite.groupcollide(self.footballs, self.mules, True, True)
+        hurt = pygame.mixer.Sound('hurt.wav')
         if collisions:
             for mules in collisions.values():
                 self.stats.score += self.game_parameters.mule_points * len(mules)
             self.sb.prep_score()
             self.sb.check_high_score()
+            pygame.mixer.Sound.play(hurt)
         if not self.mules:
             self.footballs.empty()
             self._create_fleet()

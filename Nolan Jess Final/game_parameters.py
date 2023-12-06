@@ -1,3 +1,6 @@
+import pygame
+from pygame import mixer
+from pygame.locals import *
 class Game_parameters:
     def __init__(self):
         self.screen_width = 1000
